@@ -1,14 +1,26 @@
-
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { useAuth } from '@/contexts/AuthContext';
-import { useQuiz } from '@/contexts/QuizContext';
+import { useAuth } from '@/hooks/use-auth';
+import { useQuiz } from '@/hooks/use-quiz';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Clock, CheckCircle, Trophy, RotateCcw, X, ArrowRight, Send } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { db } from '@/lib/firebase';
+import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
+
+interface QuizResult {
+  score: number;
+  totalQuestions: number;
+  timeSpent: number;
+  answers: Array<{
+    questionId: string;
+    selectedAnswer: number;
+    isCorrect: boolean;  // Changed from 'correct' to 'isCorrect' to match the context
+  }>;
+}
 
 const QuizInterface = () => {
   const { genre } = useParams<{ genre: string }>();
@@ -30,7 +42,7 @@ const QuizInterface = () => {
   
   const [timeElapsed, setTimeElapsed] = useState(0);
   const [showResults, setShowResults] = useState(false);
-  const [quizResult, setQuizResult] = useState<any>(null);
+  const [quizResult, setQuizResult] = useState<QuizResult | null>(null);
   const [selectedAnswer, setSelectedAnswer] = useState<number | null>(null);
 
   useEffect(() => {
@@ -75,15 +87,43 @@ const QuizInterface = () => {
     }
   }, [currentQuestionIndex, answers, questions]);
 
-  const handleQuizComplete = () => {
+  const handleQuizComplete = async () => {
     const result = endQuiz();
     setQuizResult(result);
     setShowResults(true);
     
-    toast({
-      title: "Quiz Completed!",
-      description: `You scored ${result.score}/${result.totalQuestions} in ${Math.floor(result.timeSpent / 60)}m ${result.timeSpent % 60}s`,
-    });
+    // Save result to Firebase
+    try {
+      const leaderboardRef = collection(db, 'leaderboard');
+      // Add server timestamp to ensure proper ordering
+      const docRef = await addDoc(leaderboardRef, {
+        userId: user?.id,
+        name: user?.name,
+        score: result.score,
+        totalQuestions: result.totalQuestions,
+        timeSpent: result.timeSpent,
+        genre: genre?.toLowerCase(),
+        isGuest: user?.isGuest || false,
+        timestamp: serverTimestamp(),
+        answers: result.answers.map(a => ({
+          questionId: a.questionId,
+          selectedAnswer: a.selectedAnswer,
+          isCorrect: a.isCorrect
+        }))
+      });
+
+      toast({
+        title: "Quiz Completed!",
+        description: `You scored ${result.score}/${result.totalQuestions} in ${Math.floor(result.timeSpent / 60)}m ${result.timeSpent % 60}s`,
+      });
+    } catch (error) {
+      console.error('Error saving quiz result:', error);
+      toast({
+        title: "Error",
+        description: "Failed to save your score. Please try again.",
+        variant: "destructive"
+      });
+    }
   };
 
   const handleAnswerSelect = (answer: number) => {

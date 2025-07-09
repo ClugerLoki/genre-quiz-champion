@@ -1,48 +1,5 @@
-
-import React, { createContext, useContext, useState, ReactNode } from 'react';
-
-interface Question {
-  id: string;
-  question: string;
-  options: string[];
-  correctAnswer: number;
-  explanation?: string;
-}
-
-interface QuizResult {
-  genre: string;
-  score: number;
-  totalQuestions: number;
-  timeSpent: number;
-  answers: { questionId: string; selectedAnswer: number; correct: boolean }[];
-}
-
-interface QuizContextType {
-  currentGenre: string | null;
-  questions: Question[];
-  currentQuestionIndex: number;
-  answers: { questionId: string; selectedAnswer: number }[];
-  startTime: number | null;
-  endTime: number | null;
-  setCurrentGenre: (genre: string) => void;
-  setQuestions: (questions: Question[]) => void;
-  nextQuestion: () => void;
-  previousQuestion: () => void;
-  selectAnswer: (questionId: string, answer: number) => void;
-  startQuiz: () => void;
-  endQuiz: () => QuizResult;
-  resetQuiz: () => void;
-}
-
-const QuizContext = createContext<QuizContextType | undefined>(undefined);
-
-export const useQuiz = () => {
-  const context = useContext(QuizContext);
-  if (context === undefined) {
-    throw new Error('useQuiz must be used within a QuizProvider');
-  }
-  return context;
-};
+import React, { useState, ReactNode } from 'react';
+import { QuizContext, Question, QuizResult } from './QuizContextType';
 
 export const QuizProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [currentGenre, setCurrentGenre] = useState<string | null>(null);
@@ -95,11 +52,11 @@ export const QuizProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       return {
         questionId: answer.questionId,
         selectedAnswer: answer.selectedAnswer,
-        correct: question ? question.correctAnswer === answer.selectedAnswer : false
+        isCorrect: question ? question.correctAnswer === answer.selectedAnswer : false
       };
     });
     
-    const score = resultAnswers.filter(a => a.correct).length;
+    const score = resultAnswers.filter(a => a.isCorrect).length;
     
     return {
       genre: currentGenre || '',

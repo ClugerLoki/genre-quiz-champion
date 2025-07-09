@@ -1,37 +1,25 @@
-
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { useAuth } from '@/contexts/AuthContext';
+import { useAuth } from '@/hooks/use-auth';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { ArrowLeft, Trophy, Medal, Award, Crown, Clock, Target } from 'lucide-react';
 import { ReactNode } from 'react';
+import { collection, query, orderBy, limit, onSnapshot, where } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
 
-// Sample leaderboard data - replace with Firebase data later
-const sampleLeaderboard = {
-  science: [
-    { id: '1', name: 'Alice Johnson', score: 5, timeSpent: 120, isGuest: false },
-    { id: '2', name: 'Bob Smith', score: 4, timeSpent: 95, isGuest: true },
-    { id: '3', name: 'Charlie Brown', score: 4, timeSpent: 110, isGuest: false },
-    { id: '4', name: 'Diana Prince', score: 3, timeSpent: 85, isGuest: false },
-    { id: '5', name: 'Eve Wilson', score: 3, timeSpent: 140, isGuest: true },
-  ],
-  history: [
-    { id: '1', name: 'Frank Miller', score: 5, timeSpent: 98, isGuest: false },
-    { id: '2', name: 'Grace Lee', score: 4, timeSpent: 102, isGuest: false },
-    { id: '3', name: 'Guest123', score: 4, timeSpent: 115, isGuest: true },
-  ],
-  geography: [
-    { id: '1', name: 'Henry Davis', score: 5, timeSpent: 88, isGuest: false },
-    { id: '2', name: 'Ivy Chen', score: 4, timeSpent: 92, isGuest: false },
-  ],
-  sports: [
-    { id: '1', name: 'Jack Wilson', score: 5, timeSpent: 105, isGuest: true },
-    { id: '2', name: 'Kate Brown', score: 4, timeSpent: 118, isGuest: false },
-  ]
-};
+interface LeaderboardEntry {
+  id: string;
+  userId: string;
+  name: string;
+  score: number;
+  timeSpent: number;
+  isGuest: boolean;
+  genre: string;
+  timestamp: Date;
+}
 
 const genres = [
   { id: 'all', name: 'All Genres' },
@@ -49,10 +37,52 @@ const Leaderboard = () => {
   const { user } = useAuth();
   const [selectedGenre, setSelectedGenre] = useState('all');
   const [isVisible, setIsVisible] = useState(false);
+  const [leaderboardData, setLeaderboardData] = useState<LeaderboardEntry[]>([]);
 
   useEffect(() => {
     setIsVisible(true);
   }, []);
+
+  useEffect(() => {
+    // Set up real-time listener for leaderboard data
+    const leaderboardRef = collection(db, 'leaderboard');
+    let q = query(
+      leaderboardRef,
+      orderBy('score', 'desc'),
+      orderBy('timeSpent', 'asc'),
+      limit(50)
+    );
+
+    if (selectedGenre !== 'all') {
+      q = query(
+        leaderboardRef,
+        where('genre', '==', selectedGenre),
+        orderBy('score', 'desc'),
+        orderBy('timeSpent', 'asc'),
+        limit(10)
+      );
+    }
+
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const entries: LeaderboardEntry[] = [];
+      snapshot.forEach((doc) => {
+        const data = doc.data();
+        entries.push({
+          id: doc.id,
+          userId: data.userId,
+          name: data.name,
+          score: data.score,
+          timeSpent: data.timeSpent,
+          isGuest: data.isGuest,
+          genre: data.genre,
+          timestamp: data.timestamp.toDate()
+        });
+      });
+      setLeaderboardData(entries);
+    });
+
+    return () => unsubscribe();
+  }, [selectedGenre]);
 
   const getRankIcon = (rank: number): ReactNode => {
     switch (rank) {
@@ -73,21 +103,7 @@ const Leaderboard = () => {
     return `${mins}:${secs.toString().padStart(2, '0')}`;
   };
 
-  const getCurrentLeaderboard = () => {
-    if (selectedGenre === 'all') {
-      // Combine all leaderboards and sort by score and time
-      const combined = Object.entries(sampleLeaderboard).flatMap(([genre, entries]) =>
-        entries.map(entry => ({ ...entry, genre }))
-      );
-      return combined
-        .sort((a, b) => b.score - a.score || a.timeSpent - b.timeSpent)
-        .slice(0, 10);
-    }
-    return sampleLeaderboard[selectedGenre as keyof typeof sampleLeaderboard] || [];
-  };
-
-  const leaderboard = getCurrentLeaderboard();
-
+  // Rest of the component remains the same, just replace getCurrentLeaderboard() with leaderboardData
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-900 via-purple-900 to-indigo-900 relative overflow-hidden">
       {/* Background Effects */}
@@ -157,12 +173,12 @@ const Leaderboard = () => {
 
               {/* Leaderboard Content */}
               <TabsContent value={selectedGenre} className="space-y-4">
-                {leaderboard.length > 0 ? (
+                {leaderboardData.length > 0 ? (
                   <>
                     {/* Top 3 Podium */}
-                    {leaderboard.slice(0, 3).length > 0 && (
+                    {leaderboardData.slice(0, 3).length > 0 && (
                       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
-                        {leaderboard.slice(0, 3).map((player, index) => (
+                        {leaderboardData.slice(0, 3).map((player, index) => (
                           <Card 
                             key={player.id}
                             className={`glass-effect border-white/10 text-center quiz-card ${
@@ -189,9 +205,9 @@ const Leaderboard = () => {
                                   <Clock className="h-4 w-4" />
                                   <span>{formatTime(player.timeSpent)}</span>
                                 </div>
-                                {selectedGenre === 'all' && 'genre' in player && (
+                                {selectedGenre === 'all' && (
                                   <Badge variant="outline" className="text-white border-white/20">
-                                    {String(player.genre)}
+                                    {player.genre}
                                   </Badge>
                                 )}
                               </div>
@@ -202,7 +218,7 @@ const Leaderboard = () => {
                     )}
 
                     {/* Rest of Leaderboard */}
-                    {leaderboard.length > 3 && (
+                    {leaderboardData.length > 3 && (
                       <Card className="glass-effect border-white/10">
                         <CardHeader>
                           <CardTitle className="text-white flex items-center">
@@ -212,7 +228,7 @@ const Leaderboard = () => {
                         </CardHeader>
                         <CardContent>
                           <div className="space-y-3">
-                            {leaderboard.slice(3).map((player, index) => (
+                            {leaderboardData.slice(3).map((player, index) => (
                               <div 
                                 key={player.id}
                                 className="flex items-center justify-between p-3 rounded-lg bg-white/5 hover:bg-white/10 transition-colors"
@@ -226,8 +242,8 @@ const Leaderboard = () => {
                                       {player.name}
                                       {player.isGuest && <Badge variant="secondary" className="ml-2 text-xs">Guest</Badge>}
                                     </div>
-                                    {selectedGenre === 'all' && 'genre' in player && (
-                                      <div className="text-white/60 text-sm capitalize">{String(player.genre)}</div>
+                                    {selectedGenre === 'all' && (
+                                      <div className="text-white/60 text-sm capitalize">{player.genre}</div>
                                     )}
                                   </div>
                                 </div>

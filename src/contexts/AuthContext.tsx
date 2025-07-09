@@ -1,62 +1,48 @@
-
-import React, { createContext, useContext, useState, useEffect } from 'react';
-
-interface User {
-  id: string;
-  name: string;
-  email?: string;
-  isGuest: boolean;
-}
-
-interface AuthContextType {
-  user: User | null;
-  login: (email: string, password: string) => Promise<void>;
-  register: (name: string, email: string, password: string) => Promise<void>;
-  guestLogin: (name: string) => void;
-  logout: () => void;
-  loading: boolean;
-}
-
-const AuthContext = createContext<AuthContextType | undefined>(undefined);
-
-export const useAuth = () => {
-  const context = useContext(AuthContext);
-  if (context === undefined) {
-    throw new Error('useAuth must be used within an AuthProvider');
-  }
-  return context;
-};
+import React, { useState, useEffect } from 'react';
+import { 
+  createUserWithEmailAndPassword, 
+  signInWithEmailAndPassword, 
+  signOut as firebaseSignOut, 
+  onAuthStateChanged,
+  updateProfile
+} from 'firebase/auth';
+import { auth } from '../lib/firebase';
+import { AuthContext, User } from './AuthContextType';
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Check for stored user session
-    const storedUser = localStorage.getItem('quizUser');
-    if (storedUser) {
-      setUser(JSON.parse(storedUser));
-    }
-    setLoading(false);
+    const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
+      if (firebaseUser) {
+        const userData: User = {
+          id: firebaseUser.uid,
+          name: firebaseUser.displayName || firebaseUser.email?.split('@')[0] || 'User',
+          email: firebaseUser.email || undefined,
+          isGuest: false
+        };
+        setUser(userData);
+      } else {
+        setUser(null);
+      }
+      setLoading(false);
+    });
+
+    return () => unsubscribe();
   }, []);
 
   const login = async (email: string, password: string) => {
     setLoading(true);
     try {
-      // Simulate API call - replace with actual Firebase auth
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
+      const userCredential = await signInWithEmailAndPassword(auth, email, password);
       const userData: User = {
-        id: `user_${Date.now()}`,
-        name: email.split('@')[0],
-        email,
+        id: userCredential.user.uid,
+        name: userCredential.user.displayName || email.split('@')[0],
+        email: userCredential.user.email || undefined,
         isGuest: false
       };
-      
       setUser(userData);
-      localStorage.setItem('quizUser', JSON.stringify(userData));
-    } catch (error) {
-      throw new Error('Login failed');
     } finally {
       setLoading(false);
     }
@@ -65,20 +51,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const register = async (name: string, email: string, password: string) => {
     setLoading(true);
     try {
-      // Simulate API call - replace with actual Firebase auth
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+      await updateProfile(userCredential.user, { displayName: name });
       
       const userData: User = {
-        id: `user_${Date.now()}`,
+        id: userCredential.user.uid,
         name,
         email,
         isGuest: false
       };
-      
       setUser(userData);
-      localStorage.setItem('quizUser', JSON.stringify(userData));
-    } catch (error) {
-      throw new Error('Registration failed');
     } finally {
       setLoading(false);
     }
@@ -90,14 +72,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       name,
       isGuest: true
     };
-    
     setUser(userData);
-    localStorage.setItem('quizUser', JSON.stringify(userData));
   };
 
-  const logout = () => {
+  const logout = async () => {
+    await firebaseSignOut(auth);
     setUser(null);
-    localStorage.removeItem('quizUser');
   };
 
   return (

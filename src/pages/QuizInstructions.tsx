@@ -1,8 +1,7 @@
-
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
-import { useAuth } from '@/contexts/AuthContext';
-import { useQuiz } from '@/contexts/QuizContext';
+import { useAuth } from '@/hooks/use-auth';
+import { useQuiz } from '@/hooks/use-quiz';
 import { Button } from '@/components/ui/button';
 import { quizQuestions } from '@/data/quizQuestions';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';

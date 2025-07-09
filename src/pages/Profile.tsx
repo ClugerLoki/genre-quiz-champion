@@ -1,17 +1,34 @@
-
 import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { useAuth } from '@/contexts/AuthContext';
+import { useAuth } from '@/hooks/use-auth';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { ArrowLeft, User, Mail, Trophy, Clock, Target, Star, LogOut } from 'lucide-react';
+import { collection, query, where, orderBy, onSnapshot } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
+
+interface QuizHistoryItem {
+  id: string;
+  genre: string;
+  score: number;
+  totalQuestions: number;
+  timeSpent: number;
+  timestamp: Date;
+}
 
 const Profile = () => {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const [isVisible, setIsVisible] = useState(false);
+  const [quizHistory, setQuizHistory] = useState<QuizHistoryItem[]>([]);
+  const [stats, setStats] = useState({
+    totalQuizzes: 0,
+    averageScore: 0,
+    bestScore: 0,
+    totalTime: 0
+  });
 
   useEffect(() => {
     if (!user) {
@@ -23,21 +40,46 @@ const Profile = () => {
       return;
     }
     setIsVisible(true);
+
+    // Set up real-time listener for quiz history
+    const leaderboardRef = collection(db, 'leaderboard');
+    const q = query(
+      leaderboardRef,
+      where('userId', '==', user.id),
+      orderBy('score', 'desc'),
+      orderBy('timeSpent', 'asc'),
+      orderBy('timestamp', 'desc')
+    );
+
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const history: QuizHistoryItem[] = [];
+      snapshot.forEach((doc) => {
+        const data = doc.data();
+        history.push({
+          id: doc.id,
+          genre: data.genre,
+          score: data.score,
+          totalQuestions: 5, // Quiz always has 5 questions
+          timeSpent: data.timeSpent,
+          timestamp: data.timestamp.toDate()
+        });
+      });
+
+      setQuizHistory(history);
+
+      // Calculate stats
+      if (history.length > 0) {
+        setStats({
+          totalQuizzes: history.length,
+          averageScore: Math.round((history.reduce((sum, quiz) => sum + (quiz.score / quiz.totalQuestions) * 100, 0) / history.length) || 0),
+          bestScore: Math.max(...history.map(quiz => quiz.score)),
+          totalTime: history.reduce((sum, quiz) => sum + quiz.timeSpent, 0)
+        });
+      }
+    });
+
+    return () => unsubscribe();
   }, [user, navigate]);
-
-  // Sample quiz history - replace with real data later
-  const quizHistory = [
-    { id: '1', genre: 'Science', score: 4, totalQuestions: 5, timeSpent: 120, date: '2024-01-15' },
-    { id: '2', genre: 'History', score: 5, totalQuestions: 5, timeSpent: 95, date: '2024-01-14' },
-    { id: '3', genre: 'Geography', score: 3, totalQuestions: 5, timeSpent: 140, date: '2024-01-13' },
-  ];
-
-  const stats = {
-    totalQuizzes: quizHistory.length,
-    averageScore: Math.round((quizHistory.reduce((sum, quiz) => sum + (quiz.score / quiz.totalQuestions) * 100, 0) / quizHistory.length) || 0),
-    bestScore: Math.max(...quizHistory.map(quiz => quiz.score)),
-    totalTime: quizHistory.reduce((sum, quiz) => sum + quiz.timeSpent, 0)
-  };
 
   const handleLogout = () => {
     logout();
@@ -50,8 +92,8 @@ const Profile = () => {
     return `${mins}:${secs.toString().padStart(2, '0')}`;
   };
 
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('en-US', {
+  const formatDate = (date: Date) => {
+    return date.toLocaleDateString('en-US', {
       year: 'numeric',
       month: 'short',
       day: 'numeric'
@@ -171,8 +213,8 @@ const Profile = () => {
                             <span className="text-white font-bold">{quiz.score}</span>
                           </div>
                           <div>
-                            <div className="text-white font-medium text-lg">{quiz.genre}</div>
-                            <div className="text-white/60 text-sm">{formatDate(quiz.date)}</div>
+                            <div className="text-white font-medium text-lg capitalize">{quiz.genre}</div>
+                            <div className="text-white/60 text-sm">{formatDate(quiz.timestamp)}</div>
                           </div>
                         </div>
                         
