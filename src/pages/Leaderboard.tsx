@@ -7,6 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { ArrowLeft, Trophy, Medal, Award, Crown, Clock, Target } from 'lucide-react';
+import { ReactNode } from 'react';
 
 // Sample leaderboard data - replace with Firebase data later
 const sampleLeaderboard = {
@@ -53,7 +54,7 @@ const Leaderboard = () => {
     setIsVisible(true);
   }, []);
 
-  const getRankIcon = (rank: number) => {
+  const getRankIcon = (rank: number): ReactNode => {
     switch (rank) {
       case 1:
         return <Crown className="h-5 w-5 text-yellow-400" />;
@@ -66,7 +67,7 @@ const Leaderboard = () => {
     }
   };
 
-  const formatTime = (seconds: number) => {
+  const formatTime = (seconds: number): string => {
     const mins = Math.floor(seconds / 60);
     const secs = seconds % 60;
     return `${mins}:${secs.toString().padStart(2, '0')}`;
@@ -190,7 +191,7 @@ const Leaderboard = () => {
                                 </div>
                                 {selectedGenre === 'all' && 'genre' in player && (
                                   <Badge variant="outline" className="text-white border-white/20">
-                                    {player.genre}
+                                    {String(player.genre)}
                                   </Badge>
                                 )}
                               </div>
@@ -226,7 +227,7 @@ const Leaderboard = () => {
                                       {player.isGuest && <Badge variant="secondary" className="ml-2 text-xs">Guest</Badge>}
                                     </div>
                                     {selectedGenre === 'all' && 'genre' in player && (
-                                      <div className="text-white/60 text-sm capitalize">{player.genre}</div>
+                                      <div className="text-white/60 text-sm capitalize">{String(player.genre)}</div>
                                     )}
                                   </div>
                                 </div>
