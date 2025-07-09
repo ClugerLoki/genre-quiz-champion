@@ -1,73 +1,56 @@
-# Welcome to your Lovable project
+# Genre Quiz Champion
 
-## Project info
+An interactive quiz application built with React, TypeScript, and Firebase. Test your knowledge across multiple genres including Science, History, Geography, Sports, Technology, Music, Art, and Mathematics.
 
-**URL**: https://lovable.dev/projects/e2b2a0bf-350e-4952-8d41-52dec8071251
+## Features
 
-## How can I edit this code?
+- Multiple quiz genres
+- Real-time leaderboard
+- User authentication
+- Profile tracking
+- Score history
+- Responsive design
+- Interactive UI with animations
 
-There are several ways of editing your application.
+## Tech Stack
 
-**Use Lovable**
-
-Simply visit the [Lovable Project](https://lovable.dev/projects/e2b2a0bf-350e-4952-8d41-52dec8071251) and start prompting.
-
-Changes made via Lovable will be committed automatically to this repo.
-
-**Use your preferred IDE**
-
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
-
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
-
-Follow these steps:
-
-```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
-
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
-
-# Step 3: Install the necessary dependencies.
-npm i
-
-# Step 4: Start the development server with auto-reloading and an instant preview.
-npm run dev
-```
-
-**Edit a file directly in GitHub**
-
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
-
-**Use GitHub Codespaces**
-
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
-
-## What technologies are used for this project?
-
-This project is built with:
-
-- Vite
-- TypeScript
 - React
-- shadcn-ui
+- TypeScript
+- Vite
+- Firebase (Authentication & Firestore)
 - Tailwind CSS
+- Shadcn/ui
+- Lucide Icons
 
-## How can I deploy this project?
+## Getting Started
 
-Simply open [Lovable](https://lovable.dev/projects/e2b2a0bf-350e-4952-8d41-52dec8071251) and click on Share -> Publish.
+1. Clone the repository
+   ```bash
+   git clone [your-repo-url]
+   cd genre-quiz-champion
+   ```
 
-## Can I connect a custom domain to my Lovable project?
+2. Install dependencies
+   ```bash
+   npm install
+   ```
 
-Yes, you can!
+3. Create a `.env` file in the root directory and add your Firebase configuration:
+   ```env
+   VITE_FIREBASE_API_KEY=your_api_key
+   VITE_FIREBASE_AUTH_DOMAIN=your_auth_domain
+   VITE_FIREBASE_PROJECT_ID=your_project_id
+   VITE_FIREBASE_STORAGE_BUCKET=your_storage_bucket
+   VITE_FIREBASE_MESSAGING_SENDER_ID=your_messaging_sender_id
+   VITE_FIREBASE_APP_ID=your_app_id
+   VITE_FIREBASE_MEASUREMENT_ID=your_measurement_id
+   ```
 
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
+4. Start the development server
+   ```bash
+   npm run dev
+   ```
 
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/tips-tricks/custom-domain#step-by-step-guide)
+## License
+
+MIT
