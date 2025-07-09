@@ -1,0 +1,291 @@
+
+import { useState, useEffect } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
+import { useAuth } from '@/contexts/AuthContext';
+import { useQuiz } from '@/contexts/QuizContext';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Progress } from '@/components/ui/progress';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Clock, CheckCircle, Trophy, RotateCcw } from 'lucide-react';
+import { useToast } from '@/hooks/use-toast';
+
+const QuizInterface = () => {
+  const { genre } = useParams<{ genre: string }>();
+  const { user } = useAuth();
+  const { 
+    questions, 
+    currentQuestionIndex, 
+    answers, 
+    startTime,
+    selectAnswer, 
+    nextQuestion, 
+    previousQuestion, 
+    startQuiz, 
+    endQuiz,
+    resetQuiz
+  } = useQuiz();
+  const navigate = useNavigate();
+  const { toast } = useToast();
+  
+  const [timeElapsed, setTimeElapsed] = useState(0);
+  const [showResults, setShowResults] = useState(false);
+  const [quizResult, setQuizResult] = useState<any>(null);
+
+  useEffect(() => {
+    if (!user) {
+      navigate('/auth');
+      return;
+    }
+
+    if (!genre) {
+      navigate('/genres');
+      return;
+    }
+
+    if (questions.length === 0) {
+      navigate(`/instructions/${genre}`);
+      return;
+    }
+
+    // Start the quiz when component mounts
+    if (!startTime) {
+      startQuiz();
+    }
+  }, [user, genre, questions, startTime, navigate, startQuiz]);
+
+  // Timer effect
+  useEffect(() => {
+    if (!startTime) return;
+
+    const interval = setInterval(() => {
+      setTimeElapsed(Math.floor((Date.now() - startTime) / 1000));
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [startTime]);
+
+  // Check if quiz should be completed
+  useEffect(() => {
+    if (answers.length === questions.length && questions.length > 0) {
+      handleQuizComplete();
+    }
+  }, [answers.length, questions.length]);
+
+  const handleQuizComplete = () => {
+    const result = endQuiz();
+    setQuizResult(result);
+    setShowResults(true);
+    
+    toast({
+      title: "Quiz Completed!",
+      description: `You scored ${result.score}/${result.totalQuestions} in ${Math.floor(result.timeSpent / 60)}m ${result.timeSpent % 60}s`,
+    });
+  };
+
+  const handleAnswerSelect = (answer: number) => {
+    const currentQuestion = questions[currentQuestionIndex];
+    selectAnswer(currentQuestion.id, answer);
+    
+    // Auto-advance to next question after a short delay
+    setTimeout(() => {
+      if (currentQuestionIndex < questions.length - 1) {
+        nextQuestion();
+      }
+    }, 500);
+  };
+
+  const formatTime = (seconds: number) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
+  };
+
+  const goToLeaderboard = () => {
+    resetQuiz();
+    navigate('/leaderboard');
+  };
+
+  const retakeQuiz = () => {
+    resetQuiz();
+    navigate(`/instructions/${genre}`);
+  };
+
+  if (!user || !questions.length) return null;
+
+  const currentQuestion = questions[currentQuestionIndex];
+  const progress = ((currentQuestionIndex + 1) / questions.length) * 100;
+  const currentAnswer = answers.find(a => a.questionId === currentQuestion?.id);
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-blue-900 via-purple-900 to-indigo-900 relative overflow-hidden">
+      {/* Background Effects */}
+      <div className="absolute inset-0">
+        <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-blue-500/10 rounded-full blur-3xl animate-pulse"></div>
+        <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-purple-500/10 rounded-full blur-3xl animate-pulse delay-1000"></div>
+      </div>
+
+      <div className="relative z-10 min-h-screen">
+        {/* Header */}
+        <header className="p-6">
+          <div className="max-w-4xl mx-auto flex justify-between items-center">
+            <div className="flex items-center space-x-4">
+              <h1 className="text-2xl font-bold text-white">
+                {genre?.charAt(0).toUpperCase() + genre?.slice(1)} Quiz
+              </h1>
+              <div className="flex items-center space-x-2 text-white/80">
+                <Clock className="h-4 w-4" />
+                <span>{formatTime(timeElapsed)}</span>
+              </div>
+            </div>
+            <div className="text-white/80">
+              Question {currentQuestionIndex + 1} of {questions.length}
+            </div>
+          </div>
+        </header>
+
+        {/* Progress Bar */}
+        <div className="px-6 mb-8">
+          <div className="max-w-4xl mx-auto">
+            <Progress value={progress} className="h-2 bg-white/10" />
+          </div>
+        </div>
+
+        {/* Question Card */}
+        <main className="px-6 pb-12">
+          <div className="max-w-4xl mx-auto">
+            <Card className="glass-effect border-white/10 animate-slide-up">
+              <CardHeader>
+                <CardTitle className="text-white text-xl md:text-2xl">
+                  {currentQuestion?.question}
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {currentQuestion?.options.map((option, index) => (
+                  <Button
+                    key={index}
+                    variant="outline"
+                    className={`w-full text-left p-6 h-auto glass-effect border-white/20 text-white hover:bg-white/10 transition-all duration-300 ${
+                      currentAnswer?.selectedAnswer === index 
+                        ? 'bg-blue-500/30 border-blue-400 shadow-lg' 
+                        : ''
+                    }`}
+                    onClick={() => handleAnswerSelect(index)}
+                  >
+                    <div className="flex items-center space-x-3">
+                      <div className={`w-8 h-8 rounded-full border-2 flex items-center justify-center text-sm font-semibold ${
+                        currentAnswer?.selectedAnswer === index
+                          ? 'bg-blue-500 border-blue-400 text-white'
+                          : 'border-white/40 text-white/60'
+                      }`}>
+                        {String.fromCharCode(65 + index)}
+                      </div>
+                      <span className="text-base">{option}</span>
+                    </div>
+                  </Button>
+                ))}
+              </CardContent>
+            </Card>
+
+            {/* Navigation */}
+            <div className="flex justify-between items-center mt-8">
+              <Button
+                variant="outline"
+                onClick={previousQuestion}
+                disabled={currentQuestionIndex === 0}
+                className="glass-effect text-white border-white/20 hover:bg-white/10"
+              >
+                Previous
+              </Button>
+              
+              <div className="flex space-x-2">
+                {questions.map((_, index) => (
+                  <div
+                    key={index}
+                    className={`w-3 h-3 rounded-full transition-colors ${
+                      index < currentQuestionIndex 
+                        ? 'bg-green-400' 
+                        : index === currentQuestionIndex 
+                        ? 'bg-blue-400' 
+                        : 'bg-white/20'
+                    }`}
+                  />
+                ))}
+              </div>
+
+              <Button
+                variant="outline"
+                onClick={nextQuestion}
+                disabled={currentQuestionIndex === questions.length - 1}
+                className="glass-effect text-white border-white/20 hover:bg-white/10"
+              >
+                Next
+              </Button>
+            </div>
+          </div>
+        </main>
+      </div>
+
+      {/* Results Dialog */}
+      <Dialog open={showResults} onOpenChange={setShowResults}>
+        <DialogContent className="glass-effect border-white/10 text-white max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center text-center">
+              <CheckCircle className="mr-2 h-6 w-6 text-green-400" />
+              Quiz Completed!
+            </DialogTitle>
+            <DialogDescription className="text-white/80 text-center">
+              Thank you for participating in the quiz
+            </DialogDescription>
+          </DialogHeader>
+          
+          {quizResult && (
+            <div className="space-y-6">
+              <div className="text-center">
+                <div className="text-4xl font-bold text-green-400 mb-2">
+                  {quizResult.score}/{quizResult.totalQuestions}
+                </div>
+                <p className="text-white/80">Correct Answers</p>
+              </div>
+              
+              <div className="grid grid-cols-2 gap-4 text-center">
+                <div>
+                  <div className="text-2xl font-semibold text-white">
+                    {formatTime(quizResult.timeSpent)}
+                  </div>
+                  <p className="text-white/60 text-sm">Time Taken</p>
+                </div>
+                <div>
+                  <div className="text-2xl font-semibold text-white">
+                    {Math.round((quizResult.score / quizResult.totalQuestions) * 100)}%
+                  </div>
+                  <p className="text-white/60 text-sm">Accuracy</p>
+                </div>
+              </div>
+              
+              <div className="flex space-x-3">
+                <Button 
+                  onClick={goToLeaderboard}
+                  className="flex-1 quiz-button bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white"
+                >
+                  <Trophy className="mr-2 h-4 w-4" />
+                  Leaderboard
+                </Button>
+                <Button 
+                  onClick={retakeQuiz}
+                  variant="outline"
+                  className="flex-1 glass-effect text-white border-white/20 hover:bg-white/10"
+                >
+                  <RotateCcw className="mr-2 h-4 w-4" />
+                  Retake
+                </Button>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+};
+
+export default QuizInterface;
