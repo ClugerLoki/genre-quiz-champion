@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Clock, CheckCircle, Trophy, RotateCcw } from 'lucide-react';
+import { Clock, CheckCircle, Trophy, RotateCcw, X, ArrowRight, Send } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
 const QuizInterface = () => {
@@ -31,6 +31,7 @@ const QuizInterface = () => {
   const [timeElapsed, setTimeElapsed] = useState(0);
   const [showResults, setShowResults] = useState(false);
   const [quizResult, setQuizResult] = useState<any>(null);
+  const [selectedAnswer, setSelectedAnswer] = useState<number | null>(null);
 
   useEffect(() => {
     if (!user) {
@@ -65,12 +66,14 @@ const QuizInterface = () => {
     return () => clearInterval(interval);
   }, [startTime]);
 
-  // Check if quiz should be completed
+  // Update selected answer when question changes
   useEffect(() => {
-    if (answers.length === questions.length && questions.length > 0) {
-      handleQuizComplete();
+    const currentQuestion = questions[currentQuestionIndex];
+    if (currentQuestion) {
+      const existingAnswer = answers.find(a => a.questionId === currentQuestion.id);
+      setSelectedAnswer(existingAnswer ? existingAnswer.selectedAnswer : null);
     }
-  }, [answers.length, questions.length]);
+  }, [currentQuestionIndex, answers, questions]);
 
   const handleQuizComplete = () => {
     const result = endQuiz();
@@ -84,15 +87,24 @@ const QuizInterface = () => {
   };
 
   const handleAnswerSelect = (answer: number) => {
+    setSelectedAnswer(answer);
     const currentQuestion = questions[currentQuestionIndex];
     selectAnswer(currentQuestion.id, answer);
-    
-    // Auto-advance to next question after a short delay
-    setTimeout(() => {
-      if (currentQuestionIndex < questions.length - 1) {
-        nextQuestion();
-      }
-    }, 500);
+  };
+
+  const handleNext = () => {
+    if (currentQuestionIndex < questions.length - 1) {
+      nextQuestion();
+    }
+  };
+
+  const handleSubmit = () => {
+    handleQuizComplete();
+  };
+
+  const handleExitQuiz = () => {
+    resetQuiz();
+    navigate('/genres');
   };
 
   const formatTime = (seconds: number) => {
@@ -115,7 +127,7 @@ const QuizInterface = () => {
 
   const currentQuestion = questions[currentQuestionIndex];
   const progress = ((currentQuestionIndex + 1) / questions.length) * 100;
-  const currentAnswer = answers.find(a => a.questionId === currentQuestion?.id);
+  const isLastQuestion = currentQuestionIndex === questions.length - 1;
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-900 via-purple-900 to-indigo-900 relative overflow-hidden">
@@ -138,8 +150,19 @@ const QuizInterface = () => {
                 <span>{formatTime(timeElapsed)}</span>
               </div>
             </div>
-            <div className="text-white/80">
-              Question {currentQuestionIndex + 1} of {questions.length}
+            <div className="flex items-center space-x-4">
+              <div className="text-white/80">
+                Question {currentQuestionIndex + 1} of {questions.length}
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleExitQuiz}
+                className="glass-effect text-white border-white/20 hover:bg-red-500/20"
+              >
+                <X className="h-4 w-4 mr-2" />
+                Exit Quiz
+              </Button>
             </div>
           </div>
         </header>
@@ -166,7 +189,7 @@ const QuizInterface = () => {
                     key={index}
                     variant="outline"
                     className={`w-full text-left p-6 h-auto glass-effect border-white/20 text-white hover:bg-white/10 transition-all duration-300 ${
-                      currentAnswer?.selectedAnswer === index 
+                      selectedAnswer === index 
                         ? 'bg-blue-500/30 border-blue-400 shadow-lg' 
                         : ''
                     }`}
@@ -174,7 +197,7 @@ const QuizInterface = () => {
                   >
                     <div className="flex items-center space-x-3">
                       <div className={`w-8 h-8 rounded-full border-2 flex items-center justify-center text-sm font-semibold ${
-                        currentAnswer?.selectedAnswer === index
+                        selectedAnswer === index
                           ? 'bg-blue-500 border-blue-400 text-white'
                           : 'border-white/40 text-white/60'
                       }`}>
@@ -203,7 +226,7 @@ const QuizInterface = () => {
                   <div
                     key={index}
                     className={`w-3 h-3 rounded-full transition-colors ${
-                      index < currentQuestionIndex 
+                      answers.find(a => a.questionId === questions[index]?.id)
                         ? 'bg-green-400' 
                         : index === currentQuestionIndex 
                         ? 'bg-blue-400' 
@@ -213,14 +236,25 @@ const QuizInterface = () => {
                 ))}
               </div>
 
-              <Button
-                variant="outline"
-                onClick={nextQuestion}
-                disabled={currentQuestionIndex === questions.length - 1}
-                className="glass-effect text-white border-white/20 hover:bg-white/10"
-              >
-                Next
-              </Button>
+              {isLastQuestion ? (
+                <Button
+                  onClick={handleSubmit}
+                  disabled={selectedAnswer === null}
+                  className="quiz-button bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white"
+                >
+                  <Send className="mr-2 h-4 w-4" />
+                  Submit Quiz
+                </Button>
+              ) : (
+                <Button
+                  onClick={handleNext}
+                  disabled={selectedAnswer === null}
+                  className="quiz-button bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white"
+                >
+                  <ArrowRight className="mr-2 h-4 w-4" />
+                  Next
+                </Button>
+              )}
             </div>
           </div>
         </main>

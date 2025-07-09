@@ -4,6 +4,7 @@ import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { useQuiz } from '@/contexts/QuizContext';
 import { Button } from '@/components/ui/button';
+import { quizQuestions } from '@/data/quizQuestions';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { ArrowLeft, Play, Clock, Target, Trophy, AlertCircle, CheckCircle } from 'lucide-react';
 
@@ -25,49 +26,12 @@ const QuizInstructions = () => {
       return;
     }
 
-    // Set current genre and prepare sample questions
+    // Set current genre and prepare real questions
     setCurrentGenre(genre);
     
-    // Sample questions for demonstration
-    const sampleQuestions = [
-      {
-        id: '1',
-        question: `What is the primary focus of ${genre} studies?`,
-        options: ['Option A', 'Option B', 'Option C', 'Option D'],
-        correctAnswer: 0,
-        explanation: 'This is a sample question for demonstration.'
-      },
-      {
-        id: '2',
-        question: `Which of the following is most important in ${genre}?`,
-        options: ['Choice 1', 'Choice 2', 'Choice 3', 'Choice 4'],
-        correctAnswer: 1,
-        explanation: 'This is another sample question.'
-      },
-      {
-        id: '3',
-        question: `How does ${genre} relate to modern society?`,
-        options: ['Answer A', 'Answer B', 'Answer C', 'Answer D'],
-        correctAnswer: 2,
-        explanation: 'Sample explanation for this question.'
-      },
-      {
-        id: '4',
-        question: `What is a key principle in ${genre}?`,
-        options: ['Principle 1', 'Principle 2', 'Principle 3', 'Principle 4'],
-        correctAnswer: 3,
-        explanation: 'This explains the correct answer.'
-      },
-      {
-        id: '5',
-        question: `Which statement about ${genre} is most accurate?`,
-        options: ['Statement A', 'Statement B', 'Statement C', 'Statement D'],
-        correctAnswer: 0,
-        explanation: 'Final sample question explanation.'
-      }
-    ];
-    
-    setQuestions(sampleQuestions);
+    // Get real questions for the selected genre
+    const genreQuestions = quizQuestions[genre] || [];
+    setQuestions(genreQuestions);
     
     setTimeout(() => setIsReady(true), 500);
   }, [user, genre, navigate, setCurrentGenre, setQuestions]);
