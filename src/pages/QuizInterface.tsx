@@ -9,7 +9,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { Clock, CheckCircle, Trophy, RotateCcw, X, ArrowRight, Send } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { db } from '@/lib/firebase';
-import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
+import { collection, addDoc, serverTimestamp, query, where, getDocs, updateDoc, doc, setDoc } from 'firebase/firestore';
 
 interface QuizResult {
   score: number;
@@ -92,26 +92,61 @@ const QuizInterface = () => {
     setQuizResult(result);
     setShowResults(true);
     
-    // Save result to Firebase
+    // Save or update result in Firebase (upsert logic)
     try {
       const leaderboardRef = collection(db, 'leaderboard');
-      // Add server timestamp to ensure proper ordering
-      const docRef = await addDoc(leaderboardRef, {
-        userId: user?.id,
-        name: user?.name,
-        score: result.score,
-        totalQuestions: result.totalQuestions,
-        timeSpent: result.timeSpent,
-        genre: genre?.toLowerCase(),
-        isGuest: user?.isGuest || false,
-        timestamp: serverTimestamp(),
-        answers: result.answers.map(a => ({
-          questionId: a.questionId,
-          selectedAnswer: a.selectedAnswer,
-          isCorrect: a.isCorrect
-        }))
+      const q = query(
+        leaderboardRef,
+        where('userId', '==', user?.id),
+        where('genre', '==', genre?.toLowerCase())
+      );
+      const querySnapshot = await getDocs(q);
+      let shouldUpdate = false;
+      let docId = null;
+      let prevScore = -1;
+      let prevTime = Number.MAX_SAFE_INTEGER;
+      querySnapshot.forEach((docSnap) => {
+        shouldUpdate = true;
+        docId = docSnap.id;
+        prevScore = docSnap.data().score;
+        prevTime = docSnap.data().timeSpent;
       });
-
+      // Only update if new score is higher, or if score is equal and time is better
+      if (shouldUpdate && docId !== null) {
+        if (
+          result.score > prevScore ||
+          (result.score === prevScore && result.timeSpent < prevTime)
+        ) {
+          await updateDoc(doc(leaderboardRef, docId), {
+            score: result.score,
+            totalQuestions: result.totalQuestions,
+            timeSpent: result.timeSpent,
+            timestamp: serverTimestamp(),
+            answers: result.answers.map(a => ({
+              questionId: a.questionId,
+              selectedAnswer: a.selectedAnswer,
+              isCorrect: a.isCorrect
+            }))
+          });
+        }
+      } else {
+        // No previous entry, create new
+        await addDoc(leaderboardRef, {
+          userId: user?.id,
+          name: user?.name,
+          score: result.score,
+          totalQuestions: result.totalQuestions,
+          timeSpent: result.timeSpent,
+          genre: genre?.toLowerCase(),
+          isGuest: user?.isGuest || false,
+          timestamp: serverTimestamp(),
+          answers: result.answers.map(a => ({
+            questionId: a.questionId,
+            selectedAnswer: a.selectedAnswer,
+            isCorrect: a.isCorrect
+          }))
+        });
+      }
       toast({
         title: "Quiz Completed!",
         description: `You scored ${result.score}/${result.totalQuestions} in ${Math.floor(result.timeSpent / 60)}m ${result.timeSpent % 60}s`,
