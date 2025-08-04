@@ -19,6 +19,7 @@ interface LeaderboardEntry {
   isGuest: boolean;
   genre: string;
   timestamp: Date;
+  totalQuestions: number;
 }
 
 const genres = [
@@ -73,12 +74,15 @@ const Leaderboard = () => {
           name: data.name,
           score: data.score,
           timeSpent: data.timeSpent,
-          isGuest: data.isGuest,
+          isGuest: data.isGuest || false,
           genre: data.genre,
-          timestamp: data.timestamp.toDate()
+          timestamp: data.timestamp?.toDate() || new Date(),
+          totalQuestions: data.totalQuestions || 5
         });
       });
       setLeaderboardData(entries);
+    }, (error) => {
+      console.error('Error fetching leaderboard data:', error);
     });
 
     return () => unsubscribe();
@@ -199,7 +203,7 @@ const Leaderboard = () => {
                             <CardContent>
                               <div className="space-y-2">
                                 <div className="text-2xl font-bold text-white">
-                                  {player.score}/5
+                                  {player.score}/{player.totalQuestions}
                                 </div>
                                 <div className="flex items-center justify-center space-x-2 text-white/60">
                                   <Clock className="h-4 w-4" />
@@ -249,7 +253,7 @@ const Leaderboard = () => {
                                 </div>
                                 <div className="flex items-center space-x-6">
                                   <div className="text-right">
-                                    <div className="text-white font-semibold">{player.score}/5</div>
+                                    <div className="text-white font-semibold">{player.score}/{player.totalQuestions}</div>
                                     <div className="text-white/60 text-sm">{formatTime(player.timeSpent)}</div>
                                   </div>
                                 </div>

@@ -95,50 +95,18 @@ const QuizInterface = () => {
     // Save or update result in Firebase (upsert logic)
     try {
       const leaderboardRef = collection(db, 'leaderboard');
-      const q = query(
-        leaderboardRef,
-        where('userId', '==', user?.id),
-        where('genre', '==', genre?.toLowerCase())
-      );
-      const querySnapshot = await getDocs(q);
-      let shouldUpdate = false;
-      let docId = null;
-      let prevScore = -1;
-      let prevTime = Number.MAX_SAFE_INTEGER;
-      querySnapshot.forEach((docSnap) => {
-        shouldUpdate = true;
-        docId = docSnap.id;
-        prevScore = docSnap.data().score;
-        prevTime = docSnap.data().timeSpent;
-      });
-      // Only update if new score is higher, or if score is equal and time is better
-      if (shouldUpdate && docId !== null) {
-        if (
-          result.score > prevScore ||
-          (result.score === prevScore && result.timeSpent < prevTime)
-        ) {
-          await updateDoc(doc(leaderboardRef, docId), {
-            score: result.score,
-            totalQuestions: result.totalQuestions,
-            timeSpent: result.timeSpent,
-            timestamp: serverTimestamp(),
-            answers: result.answers.map(a => ({
-              questionId: a.questionId,
-              selectedAnswer: a.selectedAnswer,
-              isCorrect: a.isCorrect
-            }))
-          });
-        }
-      } else {
-        // No previous entry, create new
-        await addDoc(leaderboardRef, {
-          userId: user?.id,
-          name: user?.name,
+      
+      // For guest users, always create a new entry with timestamp-based ID
+      if (user?.isGuest) {
+        const guestId = `guest_${user.id}_${Date.now()}`;
+        await setDoc(doc(leaderboardRef, guestId), {
+          userId: user.id,
+          name: user.name,
           score: result.score,
           totalQuestions: result.totalQuestions,
           timeSpent: result.timeSpent,
           genre: genre?.toLowerCase(),
-          isGuest: user?.isGuest || false,
+          isGuest: true,
           timestamp: serverTimestamp(),
           answers: result.answers.map(a => ({
             questionId: a.questionId,
@@ -146,11 +114,77 @@ const QuizInterface = () => {
             isCorrect: a.isCorrect
           }))
         });
+      } else {
+        // For authenticated users, check for existing entry and update if better
+        const q = query(
+          leaderboardRef,
+          where('userId', '==', user?.id),
+          where('genre', '==', genre?.toLowerCase()),
+          where('isGuest', '==', false)
+        );
+        const querySnapshot = await getDocs(q);
+        let shouldUpdate = false;
+        let docId = null;
+        let prevScore = -1;
+        let prevTime = Number.MAX_SAFE_INTEGER;
+        
+        querySnapshot.forEach((docSnap) => {
+          shouldUpdate = true;
+          docId = docSnap.id;
+          prevScore = docSnap.data().score;
+          prevTime = docSnap.data().timeSpent;
+        });
+        
+        // Only update if new score is higher, or if score is equal and time is better
+        if (shouldUpdate && docId !== null) {
+          if (
+            result.score > prevScore ||
+            (result.score === prevScore && result.timeSpent < prevTime)
+          ) {
+            await updateDoc(doc(leaderboardRef, docId), {
+              score: result.score,
+              totalQuestions: result.totalQuestions,
+              timeSpent: result.timeSpent,
+              timestamp: serverTimestamp(),
+              answers: result.answers.map(a => ({
+                questionId: a.questionId,
+                selectedAnswer: a.selectedAnswer,
+                isCorrect: a.isCorrect
+              }))
+            });
+            toast({
+              title: "New Best Score!",
+              description: `Improved your score to ${result.score}/${result.totalQuestions}!`,
+            });
+          } else {
+            toast({
+              title: "Quiz Completed!",
+              description: `You scored ${result.score}/${result.totalQuestions}. Your best is still ${prevScore}/${result.totalQuestions}.`,
+            });
+          }
+        } else {
+          // No previous entry, create new
+          await addDoc(leaderboardRef, {
+            userId: user?.id,
+            name: user?.name,
+            score: result.score,
+            totalQuestions: result.totalQuestions,
+            timeSpent: result.timeSpent,
+            genre: genre?.toLowerCase(),
+            isGuest: false,
+            timestamp: serverTimestamp(),
+            answers: result.answers.map(a => ({
+              questionId: a.questionId,
+              selectedAnswer: a.selectedAnswer,
+              isCorrect: a.isCorrect
+            }))
+          });
+          toast({
+            title: "First Quiz Completed!",
+            description: `Great start with ${result.score}/${result.totalQuestions} correct answers!`,
+          });
+        }
       }
-      toast({
-        title: "Quiz Completed!",
-        description: `You scored ${result.score}/${result.totalQuestions} in ${Math.floor(result.timeSpent / 60)}m ${result.timeSpent % 60}s`,
-      });
     } catch (error) {
       console.error('Error saving quiz result:', error);
       toast({
