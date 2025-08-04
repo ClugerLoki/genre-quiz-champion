@@ -406,6 +406,46 @@ const QuizInterface = () => {
                 </div>
               </div>
               
+              {/* Wrong Answers Review */}
+              {quizResult.answers.some(a => !a.isCorrect) && (
+                <div className="space-y-4">
+                  <h3 className="text-lg font-semibold text-center text-yellow-400">
+                    Review Wrong Answers
+                  </h3>
+                  <div className="max-h-60 overflow-y-auto space-y-3">
+                    {quizResult.answers
+                      .filter(a => !a.isCorrect)
+                      .map((answer, index) => {
+                        const question = questions.find(q => q.id === answer.questionId);
+                        if (!question) return null;
+                        
+                        return (
+                          <div key={answer.questionId} className="p-3 bg-white/5 rounded-lg border border-red-400/30">
+                            <p className="text-sm text-white/90 mb-2 font-medium">
+                              Q{questions.findIndex(q => q.id === answer.questionId) + 1}: {question.question}
+                            </p>
+                            <div className="space-y-1 text-xs">
+                              <div className="flex items-center text-red-400">
+                                <X className="h-3 w-3 mr-1" />
+                                Your answer: {question.options[answer.selectedAnswer]}
+                              </div>
+                              <div className="flex items-center text-green-400">
+                                <CheckCircle className="h-3 w-3 mr-1" />
+                                Correct answer: {question.options[question.correctAnswer]}
+                              </div>
+                              {question.explanation && (
+                                <p className="text-white/70 mt-2 italic">
+                                  {question.explanation}
+                                </p>
+                              )}
+                            </div>
+                          </div>
+                        );
+                      })}
+                  </div>
+                </div>
+              )}
+              
               <div className="flex space-x-3">
                 <Button 
                   onClick={goToLeaderboard}
