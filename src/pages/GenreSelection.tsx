@@ -207,11 +207,26 @@ const GenreSelection = () => {
                         {genre.description}
                       </CardDescription>
                     </CardHeader>
-                    <CardContent className="text-center">
+                    <CardContent className="text-center space-y-3">
                       <Button 
                         className={`w-full quiz-button bg-gradient-to-r ${genre.color} hover:shadow-lg text-white`}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleGenreSelect(genre.id);
+                        }}
                       >
                         Start Quiz
+                      </Button>
+                      <Button 
+                        variant="outline"
+                        className="w-full glass-effect text-white border-white/20 hover:bg-white/10"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          navigate(`/learn/${genre.id}`);
+                        }}
+                      >
+                        <Brain className="mr-2 h-4 w-4" />
+                        Learn with AI
                       </Button>
                     </CardContent>
                   </Card>

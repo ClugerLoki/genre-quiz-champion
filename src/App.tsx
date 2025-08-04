@@ -11,6 +11,7 @@ import Authentication from "./pages/Authentication";
 import GenreSelection from "./pages/GenreSelection";
 import QuizInstructions from "./pages/QuizInstructions";
 import QuizInterface from "./pages/QuizInterface";
+import AILearning from "./pages/AILearning";
 import Leaderboard from "./pages/Leaderboard";
 import Profile from "./pages/Profile";
 import NotFound from "./pages/NotFound";
@@ -31,6 +32,7 @@ const App = () => (
               <Route path="/genres" element={<GenreSelection />} />
               <Route path="/instructions/:genre" element={<QuizInstructions />} />
               <Route path="/quiz/:genre" element={<QuizInterface />} />
+              <Route path="/learn/:genre" element={<AILearning />} />
               <Route path="/leaderboard" element={<Leaderboard />} />
               <Route path="/profile" element={<Profile />} />
               <Route path="*" element={<NotFound />} />
