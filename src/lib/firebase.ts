@@ -4,13 +4,13 @@ import { getFirestore } from 'firebase/firestore';
 import { getAnalytics } from 'firebase/analytics';
 
 const firebaseConfig = {
-  apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
-  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
-  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
-  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
-  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
-  appId: import.meta.env.VITE_FIREBASE_APP_ID,
-  measurementId: import.meta.env.VITE_FIREBASE_MEASUREMENT_ID
+  apiKey: "AIzaSyAsayXz8OO8DyhfnoeJl6m1I269zbwKUBE",
+  authDomain: "quiz-5b981.firebaseapp.com",
+  projectId: "quiz-5b981",
+  storageBucket: "quiz-5b981.firebasestorage.app",
+  messagingSenderId: "276322600019",
+  appId: "1:276322600019:web:a24f7c363f30422c04b2a6",
+  measurementId: "G-RWHZ29GM5F"
 };
 
 // Initialize Firebase
