@@ -73,7 +73,7 @@ const AILearning = () => {
 
   const sendMessageToGemini = async (message: string) => {
     const API_KEY = 'AIzaSyC-JxrelJKFnGWEx6w8QB4qLezHNKTw9Os';
-    const API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent';
+    const API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent';
 
     try {
       const response = await fetch(`${API_URL}?key=${API_KEY}`, {
