@@ -14,6 +14,7 @@ import QuizInterface from "./pages/QuizInterface";
 import AILearning from "./pages/AILearning";
 import Leaderboard from "./pages/Leaderboard";
 import Profile from "./pages/Profile";
+import AdminPanel from "./pages/AdminPanel";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -35,6 +36,7 @@ const App = () => (
               <Route path="/learn/:genre" element={<AILearning />} />
               <Route path="/leaderboard" element={<Leaderboard />} />
               <Route path="/profile" element={<Profile />} />
+              <Route path="/admin" element={<AdminPanel />} />
               <Route path="*" element={<NotFound />} />
             </Routes>
           </QuizProvider>
