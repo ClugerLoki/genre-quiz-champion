@@ -70,22 +70,39 @@ const AdminPanel = () => {
   }, [user]);
 
   const checkAdminAccess = async () => {
+    console.log('Checking admin access for user:', user);
+    
     if (!user) {
+      console.log('No user found, redirecting to auth');
+      navigate('/auth');
+      return;
+    }
+
+    if (!user.email) {
+      console.log('User has no email, redirecting to auth');
       navigate('/auth');
       return;
     }
 
     try {
+      console.log('Querying users collection for email:', user.email);
       const usersRef = collection(db, 'users');
       const q = query(usersRef, where('email', '==', user.email));
       const querySnapshot = await getDocs(q);
       
+      console.log('Query results - empty:', querySnapshot.empty, 'size:', querySnapshot.size);
+      
       if (!querySnapshot.empty) {
         const userData = querySnapshot.docs[0].data();
-        if (userData.isAdmin) {
+        console.log('User data from Firebase:', userData);
+        console.log('isAdmin value:', userData.isAdmin, 'type:', typeof userData.isAdmin);
+        
+        if (userData.isAdmin === true) {
+          console.log('Admin access granted');
           setIsAdmin(true);
           loadData();
         } else {
+          console.log('User is not admin, isAdmin value:', userData.isAdmin);
           toast({
             title: "Access Denied",
             description: "You don't have admin privileges.",
@@ -94,6 +111,7 @@ const AdminPanel = () => {
           navigate('/');
         }
       } else {
+        console.log('User email not found in users collection');
         toast({
           title: "Access Denied",
           description: "Your email is not in the admin list.",
