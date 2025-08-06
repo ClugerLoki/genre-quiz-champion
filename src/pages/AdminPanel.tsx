@@ -70,7 +70,10 @@ const AdminPanel = () => {
   }, [user]);
 
   const checkAdminAccess = async () => {
+    console.log('=== ADMIN ACCESS CHECK START ===');
     console.log('Checking admin access for user:', user);
+    console.log('User ID from auth:', user?.id);
+    console.log('User email from auth:', user?.email);
     
     if (!user) {
       console.log('No user found, redirecting to auth');
