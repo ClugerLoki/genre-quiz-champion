@@ -16,6 +16,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
+      console.log('Auth state changed:', firebaseUser);
       if (firebaseUser) {
         const userData: User = {
           id: firebaseUser.uid,
@@ -23,8 +24,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           email: firebaseUser.email || undefined,
           isGuest: false
         };
+        console.log('Setting user data:', userData);
         setUser(userData);
       } else {
+        console.log('No firebase user, setting user to null');
         setUser(null);
       }
       setLoading(false);
