@@ -5,8 +5,8 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
-import { ArrowLeft, User, Mail, Trophy, Clock, Target, Star, LogOut } from 'lucide-react';
-import { collection, query, where, orderBy, onSnapshot } from 'firebase/firestore';
+import { ArrowLeft, User, Mail, Trophy, Clock, Target, Star, LogOut, Settings } from 'lucide-react';
+import { collection, query, where, orderBy, onSnapshot, doc, getDoc, getDocs } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 
 interface QuizHistoryItem {
@@ -22,6 +22,7 @@ const Profile = () => {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const [isVisible, setIsVisible] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
   const [quizHistory, setQuizHistory] = useState<QuizHistoryItem[]>([]);
   const [stats, setStats] = useState({
     totalQuizzes: 0,
@@ -40,6 +41,7 @@ const Profile = () => {
       return;
     }
     setIsVisible(true);
+    checkAdminStatus();
 
     // Set up real-time listener for quiz history
     const leaderboardRef = collection(db, 'leaderboard');
@@ -80,6 +82,33 @@ const Profile = () => {
 
     return () => unsubscribe();
   }, [user, navigate]);
+
+  const checkAdminStatus = async () => {
+    if (!user || user.isGuest || !user.email) return;
+
+    try {
+      // First try to get by document ID (UID)
+      const userDocRef = doc(db, 'users', user.id);
+      const userDoc = await getDoc(userDocRef);
+      
+      if (userDoc.exists()) {
+        const userData = userDoc.data();
+        setIsAdmin(userData.isAdmin === true);
+      } else if (user.email) {
+        // Fallback: try to query by email
+        const usersRef = collection(db, 'users');
+        const q = query(usersRef, where('email', '==', user.email));
+        const querySnapshot = await getDocs(q);
+        
+        if (!querySnapshot.empty) {
+          const userData = querySnapshot.docs[0].data();
+          setIsAdmin(userData.isAdmin === true);
+        }
+      }
+    } catch (error) {
+      console.error('Error checking admin status:', error);
+    }
+  };
 
   const handleLogout = () => {
     logout();
@@ -270,6 +299,17 @@ const Profile = () => {
                   View Leaderboard
                 </Button>
               </Link>
+              {isAdmin && (
+                <Link to="/admin">
+                  <Button 
+                    variant="outline"
+                    className="glass-effect text-orange-300 border-orange-300/40 hover:bg-orange-500/20 px-8"
+                  >
+                    <Settings className="mr-2 h-4 w-4" />
+                    Admin Panel
+                  </Button>
+                </Link>
+              )}
             </div>
           </div>
         </main>
