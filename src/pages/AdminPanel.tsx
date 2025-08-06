@@ -310,6 +310,8 @@ const AdminPanel = () => {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary/20 to-secondary/20">
         <div className="text-lg">Loading admin panel...</div>
+        <div className="text-sm mt-2">Current user: {user?.email || 'Not logged in'}</div>
+        <div className="text-sm">User ID: {user?.id || 'No ID'}</div>
       </div>
     );
   }
