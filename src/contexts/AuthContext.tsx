@@ -6,7 +6,8 @@ import {
   onAuthStateChanged,
   updateProfile
 } from 'firebase/auth';
-import { auth } from '../lib/firebase';
+import { doc, setDoc, getDoc } from 'firebase/firestore';
+import { auth, db } from '../lib/firebase';
 import { AuthContext, User } from './AuthContextType';
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -36,6 +37,21 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setLoading(true);
     try {
       const userCredential = await signInWithEmailAndPassword(auth, email, password);
+      
+      // Check if user document exists, if not create it
+      const userDocRef = doc(db, 'users', userCredential.user.uid);
+      const userDoc = await getDoc(userDocRef);
+      
+      if (!userDoc.exists() && userCredential.user.email) {
+        // Create user document in Firestore
+        await setDoc(userDocRef, {
+          email: userCredential.user.email,
+          name: userCredential.user.displayName || userCredential.user.email.split('@')[0],
+          isAdmin: false, // Default to false, can be manually updated in Firebase console
+          createdAt: new Date().toISOString()
+        });
+      }
+      
       const userData: User = {
         id: userCredential.user.uid,
         name: userCredential.user.displayName || email.split('@')[0],
@@ -53,6 +69,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       const userCredential = await createUserWithEmailAndPassword(auth, email, password);
       await updateProfile(userCredential.user, { displayName: name });
+      
+      // Create user document in Firestore
+      const userDocRef = doc(db, 'users', userCredential.user.uid);
+      await setDoc(userDocRef, {
+        email,
+        name,
+        isAdmin: false, // Default to false, can be manually updated in Firebase console
+        createdAt: new Date().toISOString()
+      });
       
       const userData: User = {
         id: userCredential.user.uid,

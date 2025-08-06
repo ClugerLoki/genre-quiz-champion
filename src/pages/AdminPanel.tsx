@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/use-auth';
 import { db } from '@/lib/firebase';
-import { collection, getDocs, addDoc, deleteDoc, doc, query, where } from 'firebase/firestore';
+import { collection, getDocs, addDoc, deleteDoc, doc, getDoc, query, where } from 'firebase/firestore';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -78,23 +78,22 @@ const AdminPanel = () => {
       return;
     }
 
-    if (!user.email) {
-      console.log('User has no email, redirecting to auth');
+    if (user.isGuest) {
+      console.log('Guest user cannot access admin panel');
       navigate('/auth');
       return;
     }
 
     try {
-      console.log('Querying users collection for email:', user.email);
-      const usersRef = collection(db, 'users');
-      const q = query(usersRef, where('email', '==', user.email));
-      const querySnapshot = await getDocs(q);
+      console.log('Querying users collection for user ID:', user.id);
       
-      console.log('Query results - empty:', querySnapshot.empty, 'size:', querySnapshot.size);
+      // First try to get by document ID (UID)
+      const userDocRef = doc(db, 'users', user.id);
+      const userDoc = await getDoc(userDocRef);
       
-      if (!querySnapshot.empty) {
-        const userData = querySnapshot.docs[0].data();
-        console.log('User data from Firebase:', userData);
+      if (userDoc.exists()) {
+        const userData = userDoc.data();
+        console.log('User data from Firebase (by UID):', userData);
         console.log('isAdmin value:', userData.isAdmin, 'type:', typeof userData.isAdmin);
         
         if (userData.isAdmin === true) {
@@ -110,17 +109,58 @@ const AdminPanel = () => {
           });
           navigate('/');
         }
+      } else if (user.email) {
+        // Fallback: try to query by email
+        console.log('User doc not found by UID, trying email query:', user.email);
+        const usersRef = collection(db, 'users');
+        const q = query(usersRef, where('email', '==', user.email));
+        const querySnapshot = await getDocs(q);
+        
+        console.log('Email query results - empty:', querySnapshot.empty, 'size:', querySnapshot.size);
+        
+        if (!querySnapshot.empty) {
+          const userData = querySnapshot.docs[0].data();
+          console.log('User data from Firebase (by email):', userData);
+          console.log('isAdmin value:', userData.isAdmin, 'type:', typeof userData.isAdmin);
+          
+          if (userData.isAdmin === true) {
+            console.log('Admin access granted');
+            setIsAdmin(true);
+            loadData();
+          } else {
+            console.log('User is not admin, isAdmin value:', userData.isAdmin);
+            toast({
+              title: "Access Denied",
+              description: "You don't have admin privileges.",
+              variant: "destructive"
+            });
+            navigate('/');
+          }
+        } else {
+          console.log('User not found in users collection');
+          toast({
+            title: "Access Denied",
+            description: "User not found in admin database.",
+            variant: "destructive"
+          });
+          navigate('/');
+        }
       } else {
-        console.log('User email not found in users collection');
+        console.log('No email available for user');
         toast({
           title: "Access Denied",
-          description: "Your email is not in the admin list.",
+          description: "No email associated with account.",
           variant: "destructive"
         });
         navigate('/');
       }
     } catch (error) {
       console.error('Error checking admin access:', error);
+      toast({
+        title: "Error",
+        description: "Failed to check admin access.",
+        variant: "destructive"
+      });
       navigate('/');
     } finally {
       setLoading(false);
