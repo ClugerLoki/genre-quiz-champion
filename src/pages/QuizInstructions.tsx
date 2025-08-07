@@ -2,10 +2,11 @@ import { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '@/hooks/use-auth';
 import { useQuiz } from '@/hooks/use-quiz';
+import { useFirebaseQuestions } from '@/hooks/useFirebaseData';
 import { Button } from '@/components/ui/button';
-import { quizQuestions } from '@/data/quizQuestions';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { ArrowLeft, Play, Clock, Target, Trophy, AlertCircle, CheckCircle } from 'lucide-react';
+import { ArrowLeft, Play, Clock, Target, Trophy, AlertCircle, CheckCircle, Loader2 } from 'lucide-react';
+import { migrateDataToFirebase } from '@/utils/dataMigration';
 
 const QuizInstructions = () => {
   const { genre } = useParams<{ genre: string }>();
@@ -13,6 +14,9 @@ const QuizInstructions = () => {
   const { setQuestions, setCurrentGenre } = useQuiz();
   const navigate = useNavigate();
   const [isReady, setIsReady] = useState(false);
+  const [migrationStatus, setMigrationStatus] = useState<string>('');
+  
+  const { questions: firebaseQuestions, loading: questionsLoading, error: questionsError } = useFirebaseQuestions(genre);
 
   useEffect(() => {
     if (!user) {
@@ -25,15 +29,36 @@ const QuizInstructions = () => {
       return;
     }
 
-    // Set current genre and prepare real questions
     setCurrentGenre(genre);
-    
-    // Get real questions for the selected genre
-    const genreQuestions = quizQuestions[genre] || [];
-    setQuestions(genreQuestions);
-    
-    setTimeout(() => setIsReady(true), 500);
-  }, [user, genre, navigate, setCurrentGenre, setQuestions]);
+  }, [user, genre, navigate, setCurrentGenre]);
+
+  useEffect(() => {
+    const handleDataSetup = async () => {
+      if (questionsLoading) return;
+      
+      if (questionsError || firebaseQuestions.length === 0) {
+        console.log('No questions found in Firebase, attempting migration...');
+        setMigrationStatus('Migrating data to Firebase...');
+        
+        const result = await migrateDataToFirebase();
+        if (result.success) {
+          setMigrationStatus('Migration completed! Please refresh the page.');
+          setTimeout(() => {
+            window.location.reload();
+          }, 2000);
+        } else {
+          setMigrationStatus('Migration failed. Please try again.');
+        }
+        return;
+      }
+
+      console.log(`Setting ${firebaseQuestions.length} questions for genre: ${genre}`);
+      setQuestions(firebaseQuestions);
+      setTimeout(() => setIsReady(true), 500);
+    };
+
+    handleDataSetup();
+  }, [firebaseQuestions, questionsLoading, questionsError, genre, setQuestions]);
 
   const startQuiz = () => {
     navigate(`/quiz/${genre}`);
@@ -42,6 +67,31 @@ const QuizInstructions = () => {
   const genreDisplayName = genre?.charAt(0).toUpperCase() + genre?.slice(1) || 'Quiz';
 
   if (!user || !genre) return null;
+
+  if (questionsLoading || migrationStatus) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-900 via-purple-900 to-indigo-900 flex items-center justify-center">
+        <div className="text-center text-white">
+          <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4" />
+          <p className="text-lg">{migrationStatus || 'Loading quiz data...'}</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (questionsError) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-900 via-purple-900 to-indigo-900 flex items-center justify-center">
+        <div className="text-center text-white">
+          <AlertCircle className="h-8 w-8 mx-auto mb-4 text-red-400" />
+          <p className="text-lg mb-4">Failed to load quiz questions</p>
+          <Button onClick={() => window.location.reload()} variant="outline">
+            Try Again
+          </Button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-900 via-purple-900 to-indigo-900 relative overflow-hidden">

@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/use-auth';
 import { useQuiz } from '@/hooks/use-quiz';
+import { useFirebaseGenres } from '@/hooks/useFirebaseData';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { 
@@ -18,81 +19,36 @@ import {
   Palette, 
   Calculator,
   Atom,
-  MapPin
+  MapPin,
+  Loader2,
+  AlertCircle,
+  BookOpen,
+  Play,
+  Scroll,
+  Laptop
 } from 'lucide-react';
+import { migrateDataToFirebase } from '@/utils/dataMigration';
 
-const genres = [
-  {
-    id: 'science',
-    name: 'Science',
-    description: 'Physics, Chemistry, Biology',
-    icon: Microscope,
-    color: 'from-green-500 to-emerald-600',
-    bgColor: 'bg-green-500/10'
-  },
-  {
-    id: 'history',
-    name: 'History',
-    description: 'World History & Events',
-    icon: Clock,
-    color: 'from-amber-500 to-orange-600',
-    bgColor: 'bg-amber-500/10'
-  },
-  {
-    id: 'geography',
-    name: 'Geography',
-    description: 'Countries, Capitals & Maps',
-    icon: Globe,
-    color: 'from-blue-500 to-cyan-600',
-    bgColor: 'bg-blue-500/10'
-  },
-  {
-    id: 'sports',
-    name: 'Sports',
-    description: 'Games, Players & Records',
-    icon: Trophy,
-    color: 'from-red-500 to-pink-600',
-    bgColor: 'bg-red-500/10'
-  },
-  {
-    id: 'technology',
-    name: 'Technology',
-    description: 'Computing & Innovation',
-    icon: Gamepad2,
-    color: 'from-purple-500 to-indigo-600',
-    bgColor: 'bg-purple-500/10'
-  },
-  {
-    id: 'music',
-    name: 'Music',
-    description: 'Artists, Genres & Theory',
-    icon: Music,
-    color: 'from-pink-500 to-rose-600',
-    bgColor: 'bg-pink-500/10'
-  },
-  {
-    id: 'art',
-    name: 'Art',
-    description: 'Artists, Movements & History',
-    icon: Palette,
-    color: 'from-violet-500 to-purple-600',
-    bgColor: 'bg-violet-500/10'
-  },
-  {
-    id: 'mathematics',
-    name: 'Mathematics',
-    description: 'Numbers, Equations & Logic',
-    icon: Calculator,
-    color: 'from-teal-500 to-cyan-600',
-    bgColor: 'bg-teal-500/10'
-  }
-];
+// Icon mapping for genres
+const iconMap: Record<string, React.ComponentType<any>> = {
+  'Atom': Atom,
+  'Scroll': Scroll,
+  'Globe': Globe,
+  'Trophy': Trophy,
+  'Laptop': Laptop,
+  'Music': Music,
+  'Palette': Palette,
+  'Calculator': Calculator
+};
 
 const GenreSelection = () => {
   const { user, logout } = useAuth();
   const { setCurrentGenre } = useQuiz();
   const navigate = useNavigate();
   const [isVisible, setIsVisible] = useState(false);
+  const [migrationStatus, setMigrationStatus] = useState<string>('');
+  
+  const { genres: firebaseGenres, loading: genresLoading, error: genresError } = useFirebaseGenres();
 
   useEffect(() => {
     if (!user) {
@@ -101,6 +57,29 @@ const GenreSelection = () => {
     }
     setIsVisible(true);
   }, [user, navigate]);
+
+  useEffect(() => {
+    const handleDataSetup = async () => {
+      if (genresLoading) return;
+      
+      if (genresError || firebaseGenres.length === 0) {
+        console.log('No genres found in Firebase, attempting migration...');
+        setMigrationStatus('Setting up quiz data...');
+        
+        const result = await migrateDataToFirebase();
+        if (result.success) {
+          setMigrationStatus('Setup completed! Refreshing page...');
+          setTimeout(() => {
+            window.location.reload();
+          }, 1000);
+        } else {
+          setMigrationStatus('Setup failed. Please refresh the page.');
+        }
+      }
+    };
+
+    handleDataSetup();
+  }, [firebaseGenres, genresLoading, genresError]);
 
   const handleGenreSelect = (genreId: string) => {
     setCurrentGenre(genreId);
@@ -113,6 +92,31 @@ const GenreSelection = () => {
   };
 
   if (!user) return null;
+
+  if (genresLoading || migrationStatus) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-900 via-purple-900 to-indigo-900 flex items-center justify-center">
+        <div className="text-center text-white">
+          <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4" />
+          <p className="text-lg">{migrationStatus || 'Loading quiz genres...'}</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (genresError || firebaseGenres.length === 0) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-900 via-purple-900 to-indigo-900 flex items-center justify-center">
+        <div className="text-center text-white">
+          <AlertCircle className="h-8 w-8 mx-auto mb-4 text-red-400" />
+          <p className="text-lg mb-4">Failed to load quiz genres</p>
+          <Button onClick={() => window.location.reload()} variant="outline">
+            Try Again
+          </Button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-900 via-purple-900 to-indigo-900 relative overflow-hidden">
@@ -187,47 +191,44 @@ const GenreSelection = () => {
 
             {/* Genre Grid */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-              {genres.map((genre, index) => {
-                const IconComponent = genre.icon;
+              {firebaseGenres.map((genre, index) => {
+                const IconComponent = iconMap[genre.icon] || BookOpen;
                 return (
                   <Card 
                     key={genre.id}
-                    className={`glass-effect border-white/10 quiz-card cursor-pointer group hover:border-white/30 transition-all duration-300 ${genre.bgColor} animate-slide-up`}
+                    className={`glass-effect border-white/10 hover:border-white/30 transition-all duration-300 transform hover:scale-105 cursor-pointer group ${
+                      isVisible ? `animate-slide-up` : 'opacity-0'
+                    }`}
                     style={{ animationDelay: `${index * 100}ms` }}
-                    onClick={() => handleGenreSelect(genre.id)}
                   >
-                    <CardHeader className="text-center pb-4">
-                      <div className={`mx-auto w-16 h-16 rounded-full bg-gradient-to-r ${genre.color} flex items-center justify-center mb-4 group-hover:scale-110 transition-transform duration-300`}>
-                        <IconComponent className="h-8 w-8 text-white" />
+                    <CardHeader className="pb-4">
+                      <div className={`w-16 h-16 rounded-full bg-gradient-to-br ${genre.bgColor} flex items-center justify-center mb-4 group-hover:scale-110 transition-transform duration-300`}>
+                        <IconComponent className={`h-8 w-8 ${genre.color}`} />
                       </div>
-                      <CardTitle className="text-white group-hover:text-blue-200 transition-colors">
-                        {genre.name}
-                      </CardTitle>
+                      <CardTitle className="text-white text-xl">{genre.name}</CardTitle>
                       <CardDescription className="text-white/60">
                         {genre.description}
                       </CardDescription>
                     </CardHeader>
-                    <CardContent className="text-center space-y-3">
-                      <Button 
-                        className={`w-full quiz-button bg-gradient-to-r ${genre.color} hover:shadow-lg text-white`}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleGenreSelect(genre.id);
-                        }}
-                      >
-                        Start Quiz
-                      </Button>
-                      <Button 
-                        variant="outline"
-                        className="w-full glass-effect text-white border-white/20 hover:bg-white/10"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          navigate(`/learn/${genre.id}`);
-                        }}
-                      >
-                        <Brain className="mr-2 h-4 w-4" />
-                        Learn with AI
-                      </Button>
+                    <CardContent className="pt-0">
+                      <div className="flex gap-2">
+                        <Button 
+                          onClick={() => handleGenreSelect(genre.id)}
+                          className={`flex-1 quiz-button bg-gradient-to-r ${genre.bgColor} hover:opacity-90 text-white border-0`}
+                        >
+                          <Play className="mr-2 h-4 w-4" />
+                          Start Quiz
+                        </Button>
+                        <Link to={`/learn/${genre.id}`} className="flex-1">
+                          <Button 
+                            variant="outline" 
+                            className="w-full glass-effect text-white border-white/30 hover:bg-white/10"
+                          >
+                            <BookOpen className="mr-2 h-4 w-4" />
+                            Learn
+                          </Button>
+                        </Link>
+                      </div>
                     </CardContent>
                   </Card>
                 );

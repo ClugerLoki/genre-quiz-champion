@@ -11,7 +11,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { useToast } from '@/hooks/use-toast';
-import { Trash2, Plus, Users, BookOpen, List } from 'lucide-react';
+import { Trash2, Plus, Users, BookOpen, List, Database } from 'lucide-react';
+import DataMigrationButton from '@/components/DataMigrationButton';
 
 interface Question {
   id: string;
@@ -171,30 +172,44 @@ const AdminPanel = () => {
   };
 
   const loadData = async () => {
+    console.log('=== LOADING ADMIN DATA ===');
     try {
       // Load questions
+      console.log('Loading questions from Firebase...');
       const questionsSnapshot = await getDocs(collection(db, 'questions'));
-      const questionsData = questionsSnapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      })) as Question[];
+      console.log(`Found ${questionsSnapshot.size} questions in Firebase`);
+      
+      const questionsData = questionsSnapshot.docs.map(doc => {
+        const data = { id: doc.id, ...doc.data() };
+        console.log('Question data:', data);
+        return data;
+      }) as Question[];
       setQuestions(questionsData);
 
       // Load genres
+      console.log('Loading genres from Firebase...');
       const genresSnapshot = await getDocs(collection(db, 'genres'));
-      const genresData = genresSnapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      })) as Genre[];
+      console.log(`Found ${genresSnapshot.size} genres in Firebase`);
+      
+      const genresData = genresSnapshot.docs.map(doc => {
+        const data = { id: doc.id, ...doc.data() };
+        console.log('Genre data:', data);
+        return data;
+      }) as Genre[];
       setGenres(genresData);
 
       // Load users
+      console.log('Loading users from Firebase...');
       const usersSnapshot = await getDocs(collection(db, 'users'));
+      console.log(`Found ${usersSnapshot.size} users in Firebase`);
+      
       const usersData = usersSnapshot.docs.map(doc => ({
         id: doc.id,
         ...doc.data()
       })) as User[];
       setUsers(usersData);
+      
+      console.log('=== DATA LOADING COMPLETE ===');
     } catch (error) {
       console.error('Error loading data:', error);
       toast({
@@ -334,7 +349,7 @@ const AdminPanel = () => {
         </div>
 
         <Tabs defaultValue="questions" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-4">
+          <TabsList className="grid w-full grid-cols-5">
             <TabsTrigger value="questions" className="flex items-center gap-2">
               <List size={16} />
               Questions
@@ -350,6 +365,10 @@ const AdminPanel = () => {
             <TabsTrigger value="users" className="flex items-center gap-2">
               <Users size={16} />
               Users
+            </TabsTrigger>
+            <TabsTrigger value="migrate" className="flex items-center gap-2">
+              <Database size={16} />
+              Migrate Data
             </TabsTrigger>
           </TabsList>
 
@@ -587,6 +606,20 @@ const AdminPanel = () => {
                     ))}
                   </TableBody>
                 </Table>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="migrate">
+            <Card>
+              <CardHeader>
+                <CardTitle>Data Migration</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <p className="text-muted-foreground">
+                  Use this tool to migrate static quiz data to Firebase. This will populate your Firebase database with questions and genres.
+                </p>
+                <DataMigrationButton />
               </CardContent>
             </Card>
           </TabsContent>
